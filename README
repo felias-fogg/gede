@@ -1,0 +1,57 @@
+Gede
+----
+
+Gede was written by Johan Henriksson.
+See LICENSE file for license information.
+
+The icons used are from the NetBeans project and licensed under the
+terms of the NetBeans License Agreement.
+
+Dependencies
+============
+
+Gede depends on Qt5 and exuberant-ctags.
+
+Make sure that you have all dependencies installed.
+
+On Debian/Ubuntu/Mint:
+
+    # sudo apt-get install gdb
+    # sudo apt-get install g++
+    # sudo apt-get install exuberant-ctags
+    # sudo apt-get install python
+    # sudo apt-get install qt5-qmake qtbase5-dev
+
+On Redhat/Centos:
+
+    # sudo yum install gdb
+    # sudo yum install gcc
+    # sudo yum install gcc-c++
+    # sudo yum install ctags
+    # sudo yum install qt5-designer qt5-devel
+
+On FreeBSD:
+
+    # pkg install gdb
+    # pkg install universal-ctags-g20180225
+    # pkg install qt5
+    # pkg install gcc
+
+
+
+Building
+========
+
+Extract:
+
+    # tar -xvJf gede-x.y.z.tar.xz
+
+
+Compile and install (to /usr/local/bin):
+
+    # sudo make install
+
+Gede can now be launched:
+
+    # gede
+
