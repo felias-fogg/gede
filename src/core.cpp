@@ -236,6 +236,9 @@ Core::Core()
     ,m_currentFrameIdx(-1)
     ,m_varWatchLastId(10)
     ,m_isRemote(false)
+    ,m_noRun(false)
+    ,m_download(false)
+    ,m_programPath(QString::null)
     ,m_ptsFd(0)
     ,m_scanSources(false)
     ,m_ptsListener(NULL)
@@ -504,14 +507,37 @@ int Core::initCoreDump(Settings *cfg, QString gdbPath, QString programPath, QStr
     return rc;
 }
 
-    
+void Core::gdbLoadFile(void) {
+  GdbCom& com = GdbCom::getInstance();
+  Tree resultData;
 
-int Core::initRemote(Settings *cfg, QString gdbPath, QString programPath, QString tcpHost, int tcpPort)
+  if(!m_programPath.isEmpty())
+    {
+        com.commandF(&resultData, "-file-symbol-file %s", stringToCStr(m_programPath));
+    }
+
+  if(!m_programPath.isEmpty())
+    {
+      com.commandF(&resultData, "-file-exec-file %s", stringToCStr(m_programPath));
+
+        if(m_download)
+            com.commandF(&resultData, "-target-download");
+    }
+    
+    gdbGetFiles();
+    
+}
+
+
+int Core::initRemote(Settings *cfg, QString gdbPath, QString programPath, QString tcpHost, int tcpPort, bool noRun)
 {
     GdbCom& com = GdbCom::getInstance();
     Tree resultData;
 
     m_isRemote = true;
+    m_download = cfg->m_download;
+    m_noRun = noRun;
+    m_programPath = programPath;
     
     if(com.init(gdbPath, cfg->m_enableDebugLog))
     {
@@ -521,21 +547,9 @@ int Core::initRemote(Settings *cfg, QString gdbPath, QString programPath, QStrin
 
     com.commandF(&resultData, "-target-select extended-remote %s:%d", stringToCStr(tcpHost), tcpPort); 
 
-    if(!programPath.isEmpty())
-    {
-        com.commandF(&resultData, "-file-symbol-file %s", stringToCStr(programPath));
-
-    }
-
     runInitCommands(cfg);
 
-    if(!programPath.isEmpty())
-    {
-      com.commandF(&resultData, "-file-exec-file %s", stringToCStr(programPath));
-
-        if(cfg->m_download)
-            com.commandF(&resultData, "-target-download");
-    }
+    gdbLoadFile();
     
     // Get memory depth (32 or 64)
     detectMemoryDepth();
@@ -741,6 +755,7 @@ int Core::gdbSetBreakpointAtFunc(QString func)
 void Core::gdbRun()
 {
     GdbCom& com = GdbCom::getInstance();
+    GdbResult rc;
     Tree resultData;
     ICore::TargetState oldState;
 
@@ -762,7 +777,12 @@ void Core::gdbRun()
     m_pid = 0;
     oldState = m_targetState;
     m_targetState = ICore::TARGET_STARTING;
-    GdbResult rc = com.commandF(&resultData, "-exec-run");
+    if (m_noRun) { // when running avr-gdb, we use monitor reset & continue to restart the program
+      rc = com.commandF(&resultData, "monitor reset");
+      if (rc != GDB_ERROR)
+	rc = com.commandF(&resultData, "-exec-continue");
+    } else
+      rc = com.commandF(&resultData, "-exec-run");
     if(rc == GDB_ERROR)
         m_targetState = oldState;
 
@@ -2049,5 +2069,8 @@ bool Core::isRunning()
 }
 
 
-
+bool Core::isDownload()
+{
+  return m_download;
+}
     

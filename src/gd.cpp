@@ -42,6 +42,7 @@ static int dumpUsage()
     printf("  --version                          Displays the version of gede.\n");
     printf("  --projconfig FILENAME              Specify config filename to use.\n");
     printf("                                     Default is '%s' \n", PROJECT_CONFIG_FILENAME);
+    printf("  --no-run                           Do not use the 'run' command\n");
     printf("\n");
     printf("Examples:\n");
     printf("\n");
@@ -85,6 +86,7 @@ int main(int argc, char *argv[])
     Settings cfg;
     bool showConfigDialog = true;
     QString customProjectConfig;
+    bool noRun = false;
     
     // Ensure that the config dir exist
     QDir d;
@@ -102,14 +104,13 @@ int main(int argc, char *argv[])
         {
             return dumpUsage();
         }
-        else if((strcmp(curArg, "--projconfig") == 0 || strcmp(curArg, "--proj-config") == 0)
+        else if((strcmp(curArg, "--projconfig") == 0 || strcmp(curArg, "--proj-config") == 0 || strcmp(curArg, "--no-run") == 0)
             && i+1 < argc)
         {
             i++;
             customProjectConfig = argv[i];
             cfg.setProjectConfig(customProjectConfig);
         }
-        
     }
     
     // Load default config
@@ -143,6 +144,8 @@ int main(int argc, char *argv[])
         {
             return dumpVersion();
         }
+	else if (strcmp(curArg, "--no-run") == 0)
+	  noRun = true;
         else // if(strcmp(curArg, "--help") == 0)
         {
             return dumpUsage();
@@ -205,7 +208,7 @@ int main(int argc, char *argv[])
     else if(cfg.m_connectionMode == MODE_PID)
         rc = core.initPid(&cfg, cfg.m_gdbPath, cfg.getProgramPath(), cfg.m_runningPid);
     else
-        rc = core.initRemote(&cfg, cfg.m_gdbPath, cfg.getProgramPath(), cfg.m_tcpHost, cfg.m_tcpPort);
+        rc = core.initRemote(&cfg, cfg.m_gdbPath, cfg.getProgramPath(), cfg.m_tcpHost, cfg.m_tcpPort, noRun);
 
     if(rc)
         return rc;

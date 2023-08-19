@@ -142,6 +142,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui.actionStep_In, SIGNAL(triggered()), SLOT(onStepIn()));
     connect(m_ui.actionStep_Out, SIGNAL(triggered()), SLOT(onStepOut()));
     connect(m_ui.actionRestart, SIGNAL(triggered()), SLOT(onRestart()));
+    connect(m_ui.actionReload, SIGNAL(triggered()), SLOT(onReload()));
     connect(m_ui.actionContinue, SIGNAL(triggered()), SLOT(onContinue()));
 
     connect(m_ui.actionViewStack, SIGNAL(triggered()), SLOT(onViewStack()));
@@ -1376,6 +1377,13 @@ void MainWindow::onRestart()
     core.gdbRun();
 }
 
+void MainWindow::onReload()
+{
+    Core &core = Core::getInstance();
+    core.gdbLoadFile();
+
+    onRestart();
+}
 
 void MainWindow::onContinue()
 {
@@ -2002,6 +2010,8 @@ void MainWindow::ICore_onTargetOutput(QString message)
 
 void MainWindow::ICore_onStateChanged(TargetState state)
 {
+
+    Core &core = Core::getInstance();
     bool isRunning = true;
     if (state == TARGET_STOPPED || state == TARGET_FINISHED)
         isRunning = false;
@@ -2013,6 +2023,7 @@ void MainWindow::ICore_onStateChanged(TargetState state)
     m_ui.actionStop->setEnabled(isRunning);
     m_ui.actionContinue->setEnabled(isStopped);
     m_ui.actionRestart->setEnabled(!isRunning);
+    m_ui.actionReload->setEnabled(!isRunning && core.isDownload());
 
     m_ui.varWidget->setEnabled(isStopped);
 
