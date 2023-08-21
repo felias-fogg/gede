@@ -37,7 +37,10 @@ On FreeBSD:
     # pkg install qt5
     # pkg install gcc
 
-
+On macOS (use homebrew):
+    # brew install universal-ctags
+    # brew install qt@5
+    # brew link --force qt@5
 
 Building
 ========
@@ -51,11 +54,15 @@ Compile and install (to /usr/local/bin):
 
     # sudo make install
 
+Under macOS, you need to copy the app/binary manually from src/gede.app to Applications and/or /usr/local/bin
+
+
 Gede can now be launched:
 
     # gede
 
-Modifications
+
+Modifications (from 2.18.3 to 2.19.0):
 =============
 
 I included the following modifications
