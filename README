@@ -63,7 +63,7 @@ Gede can now be launched:
     # gede
 
 
-Modifications (from 2.18.3 to 2.19.0):
+Modifications (from 2.18.3 to 2.19.1):
 =============
 
 I included the following modifications
@@ -74,3 +74,5 @@ I included the following modifications
    Instead 'monitor reset' and 'continue' commands are used.
 3) Added a new command 'reload' that can be used to re-download
    the binary file (after, e.g., it has been modified)
+4) When selecting remote debugging in the opening dialog, one can still
+   use the file selection tool for locatiing the binary.

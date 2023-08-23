@@ -119,11 +119,7 @@ def dump_usage():
 
 
 def exeExist(name):
-    pathEnv = os.environ["PATH"]
-    for path in pathEnv.split(":"):
-        if os.path.isfile(path + "/" + name):
-            return path
-    return ""
+    return shutil.which(name)
 
 def printRed(textString):
     """ Print in red text """

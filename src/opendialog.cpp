@@ -239,6 +239,7 @@ void OpenDialog::onConnectionTypeLocal(bool checked)
 
 void OpenDialog::onConnectionTypeTcp(bool checked)
 {
+    m_ui.pushButton_selectFile->setEnabled(checked);
     m_ui.lineEdit_tcpHost->setEnabled(checked);
     m_ui.lineEdit_tcpPort->setEnabled(checked);
     m_ui.checkBox_download->setEnabled(checked);
