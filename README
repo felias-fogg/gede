@@ -49,14 +49,12 @@ Building
 Extract:
 
     # tar -xvJf gede-x.y.z.tar.xz
+    or
+    # tar -xvzf gede-x.y.z.tar.gz
 
 Compile and install (to /usr/local/bin):
 
     # sudo make install
-
-Under macOS, you need to copy the binary manually from src/gede.app/Contents/MacOS/gede to /usr/local/bin
-(using sudo)
-
 
 Gede can now be launched:
 

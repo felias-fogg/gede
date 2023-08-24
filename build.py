@@ -275,6 +275,8 @@ if __name__ == "__main__":
                 
         if do_install:
             os.chdir("src")
+            if sys.platform == 'darwin':
+                os.chdir("gede.app/Contents/MacOS")
             print("Installing to '%s'" % (g_dest_path) )
             try:
                 os.makedirs(g_dest_path + "/bin")
