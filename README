@@ -50,12 +50,12 @@ Extract:
 
     # tar -xvJf gede-x.y.z.tar.xz
 
-
 Compile and install (to /usr/local/bin):
 
     # sudo make install
 
-Under macOS, you need to copy the app/binary manually from src/gede.app to /Applications and/or /usr/local/bin
+Under macOS, you need to copy the binary manually from src/gede.app/Contents/MacOS/gede to /usr/local/bin
+(using sudo)
 
 
 Gede can now be launched:
@@ -70,9 +70,10 @@ I included the following modifications
 1) Added pre-processor conditionals that make it possible to compile
    gede under macOS and make the mono spaced characters large enough on a Mac
 2) Added an option "--no-run" that will prohibit the use of the GDB
-   'run' command since acr-gdb 8.1 seems to have problems with that.
+   'run' command since avr-gdb 8.1 seems to have problems with that.
    Instead 'monitor reset' and 'continue' commands are used.
 3) Added a new command 'reload' that can be used to re-download
-   the binary file (after, e.g., it has been modified)
+   the binary file (after, e.g., it has been modified). The icon is a
+   downward pointing arrow.
 4) When selecting remote debugging in the opening dialog, one can still
-   use the file selection tool for locatiing the binary.
+   use the file selection tool for locating the binary.
