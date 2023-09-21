@@ -219,11 +219,12 @@ public:
 
     static Core& getInstance();
     int initPid(Settings *cfg, QString gdbPath, QString programPath, int pid);
+    int initSerial(Settings *cfg, QString gdbPath, QString programPath, QString serialPort, int baudRate);
     int initLocal(Settings *cfg, QString gdbPath, QString programPath, QStringList argumentList);
     int initCoreDump(Settings *cfg, QString gdbPath, QString programPath, QString coreDumpFile);
-    int initRemote(Settings *cfg, QString gdbPath, QString programPath, QString tcpHost, int tcpPort, bool noRun);
+    int initRemote(Settings *cfg, QString gdbPath, QString programPath, QString tcpHost, int tcpPort);
     int evaluateExpression(QString expr, QString *data);
-    bool isDownload();
+    
     void setListener(ICore *inf) { m_inf = inf; };
 
     
@@ -253,7 +254,6 @@ public:
     void gdbStepOut();
     void gdbContinue();
     void gdbRun();
-    void gdbLoadFile();
     bool gdbGetFiles();
 
     int getMemoryDepth();
@@ -316,9 +316,6 @@ private:
     QList <VarWatch*> m_watchList;
     int m_varWatchLastId;
     bool m_isRemote; //!< True if "remote target" or false if it is a "local target".
-    bool m_noRun;
-    bool m_download;
-    QString m_programPath;
     int m_ptsFd;
     bool m_scanSources; //!< True if the source filelist may have changed
     QSocketNotifier  *m_ptsListener;

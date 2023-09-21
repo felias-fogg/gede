@@ -25,9 +25,9 @@ public:
     OpenDialog(QWidget *parent);
 
     void setProgram(QString program);
-    void setArguments(QString program);
+    void setArguments(QStringList program);
     QString getProgram();
-    QString getArguments();
+    QStringList getArguments();
 
     QString getCoreDumpFile();
     
@@ -45,6 +45,11 @@ public:
     
     bool getDownload();
     void setDownload(bool enable);
+
+    int getSerialBaudRate();
+    QString getSerialPort();
+    void setSerialPort(QString port);
+    void setSerialBaudRate(int baud);
 
     
     void setMode(ConnectionMode mode);
@@ -71,6 +76,7 @@ private:
 private slots:
     void onConnectionTypeLocal(bool checked);
     void onConnectionTypeTcp(bool checked);
+    void onConnectionTypeSerial(bool checked);
     void onConnectionTypeCoreDump(bool checked);
     void onConnectionTypePid(bool checked);
     

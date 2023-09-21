@@ -135,9 +135,9 @@ QString CoreVar::getData(DispFormat fmt) const
             QChar c = m_data.toInt();
             char clat = c.toLatin1();
             if(isprint(clat))
-                valueText.sprintf("%d '%c'", (int)m_data.toInt(), clat);
+                valueText = QString::asprintf("%d '%c'", (int)m_data.toInt(), clat);
             else
-                valueText.sprintf("%d ' '", (int)m_data.toInt());
+                valueText = QString::asprintf("%d ' '", (int)m_data.toInt());
         }
         else if(fmt == FMT_BIN)
         {
@@ -146,7 +146,7 @@ QString CoreVar::getData(DispFormat fmt) const
             qlonglong val = m_data.toULongLong();
             do
             {
-                subText.sprintf("%d", (int)(val & 0x1));
+                subText = QString::asprintf("%d", (int)(val & 0x1));
                 reverseText = subText + reverseText;
                 val = val>>1;
             }
@@ -163,7 +163,7 @@ QString CoreVar::getData(DispFormat fmt) const
         else if(fmt == FMT_HEX)
         {
             QString text;
-            text.sprintf("%llx", m_data.toLongLong());
+            text = QString::asprintf("%llx", m_data.toLongLong());
 
             // Prefix the string with suitable number of zeroes
             while(text.length()%4 != 0 && text.length() > 4)
@@ -236,9 +236,6 @@ Core::Core()
     ,m_currentFrameIdx(-1)
     ,m_varWatchLastId(10)
     ,m_isRemote(false)
-    ,m_noRun(false)
-    ,m_download(false)
-    ,m_programPath(QString::null)
     ,m_ptsFd(0)
     ,m_scanSources(false)
     ,m_ptsListener(NULL)
@@ -430,9 +427,7 @@ int Core::initLocal(Settings *cfg, QString gdbPath, QString programPath, QString
     QString commandStr;
     if(argumentList.size() > 0)
     {
-        commandStr = "-exec-arguments ";
-        for(int i = 0;i < argumentList.size();i++)
-            commandStr += " " + argumentList[i];
+        commandStr = "-exec-arguments " + joingStringList(argumentList);
         com.command(NULL, commandStr);
     }
     
@@ -507,37 +502,14 @@ int Core::initCoreDump(Settings *cfg, QString gdbPath, QString programPath, QStr
     return rc;
 }
 
-void Core::gdbLoadFile(void) {
-  GdbCom& com = GdbCom::getInstance();
-  Tree resultData;
-
-  if(!m_programPath.isEmpty())
-    {
-        com.commandF(&resultData, "-file-symbol-file %s", stringToCStr(m_programPath));
-    }
-
-  if(!m_programPath.isEmpty())
-    {
-      com.commandF(&resultData, "-file-exec-file %s", stringToCStr(m_programPath));
-
-        if(m_download)
-            com.commandF(&resultData, "-target-download");
-    }
     
-    gdbGetFiles();
-    
-}
 
-
-int Core::initRemote(Settings *cfg, QString gdbPath, QString programPath, QString tcpHost, int tcpPort, bool noRun)
+int Core::initRemote(Settings *cfg, QString gdbPath, QString programPath, QString tcpHost, int tcpPort)
 {
     GdbCom& com = GdbCom::getInstance();
     Tree resultData;
 
     m_isRemote = true;
-    m_download = cfg->m_download;
-    m_noRun = noRun;
-    m_programPath = programPath;
     
     if(com.init(gdbPath, cfg->m_enableDebugLog))
     {
@@ -547,9 +519,72 @@ int Core::initRemote(Settings *cfg, QString gdbPath, QString programPath, QStrin
 
     com.commandF(&resultData, "-target-select extended-remote %s:%d", stringToCStr(tcpHost), tcpPort); 
 
+    if(!programPath.isEmpty())
+    {
+        com.commandF(&resultData, "-file-symbol-file %s", stringToCStr(programPath));
+
+    }
+
     runInitCommands(cfg);
 
-    gdbLoadFile();
+    if(!programPath.isEmpty())
+    {
+      com.commandF(&resultData, "-file-exec-file %s", stringToCStr(programPath));
+
+        if(cfg->m_download)
+            com.commandF(&resultData, "-target-download");
+    }
+    
+    // Get memory depth (32 or 64)
+    detectMemoryDepth();
+
+    if(gdbSetBreakpointAtFunc(cfg->m_initialBreakpoint))
+    {
+        warnMsg("Failed to set breakpoint at %s", stringToCStr(cfg->m_initialBreakpoint));
+    }
+
+    gdbGetFiles();
+
+    
+    return 0;
+}
+
+
+
+int Core::initSerial(Settings *cfg, QString gdbPath, QString programPath, QString serialPort, int baudRate)
+{
+    GdbCom& com = GdbCom::getInstance();
+    Tree resultData;
+
+    m_isRemote = true;
+
+
+    if(com.init(gdbPath, cfg->m_enableDebugLog))
+    {
+        critMsg("Failed to start gdb ('%s')", stringToCStr(gdbPath));
+        return -1;
+    }
+
+    com.commandF(&resultData, "set serial baud %d", baudRate); 
+
+    com.commandF(&resultData, "-target-select extended-remote %s", stringToCStr(serialPort)); 
+
+
+    if(!programPath.isEmpty())
+    {
+        com.commandF(&resultData, "-file-symbol-file %s", stringToCStr(programPath));
+
+    }
+
+    runInitCommands(cfg);
+
+    if(!programPath.isEmpty())
+    {
+      com.commandF(&resultData, "-file-exec-file %s", stringToCStr(programPath));
+
+        if(cfg->m_download)
+            com.commandF(&resultData, "-target-download");
+    }
     
     // Get memory depth (32 or 64)
     detectMemoryDepth();
@@ -618,7 +653,7 @@ int Core::gdbGetMemory(quint64 addr, size_t count, QByteArray *data)
 
     int rc = 0;
     QString cmdStr;
-    cmdStr.sprintf("-data-read-memory-bytes 0x%llx %u" , (long long)addr, (unsigned int)count);
+    cmdStr = QString::asprintf("-data-read-memory-bytes 0x%llx %u" , (long long)addr, (unsigned int)count);
     
     rc = com.command(&resultData, cmdStr);
 
@@ -755,7 +790,6 @@ int Core::gdbSetBreakpointAtFunc(QString func)
 void Core::gdbRun()
 {
     GdbCom& com = GdbCom::getInstance();
-    GdbResult rc;
     Tree resultData;
     ICore::TargetState oldState;
 
@@ -777,12 +811,7 @@ void Core::gdbRun()
     m_pid = 0;
     oldState = m_targetState;
     m_targetState = ICore::TARGET_STARTING;
-    if (m_noRun) { // when running avr-gdb, we use monitor reset & continue to restart the program
-      rc = com.commandF(&resultData, "monitor reset");
-      if (rc != GDB_ERROR)
-	rc = com.commandF(&resultData, "-exec-continue");
-    } else
-      rc = com.commandF(&resultData, "-exec-run");
+    GdbResult rc = com.commandF(&resultData, "-exec-run");
     if(rc == GDB_ERROR)
         m_targetState = oldState;
 
@@ -1122,7 +1151,7 @@ int Core::gdbAddVarWatch(QString varName, VarWatch** watchPtr)
 {
     int rc = 0;
     QString watchId;
-    watchId.sprintf("w%d", m_varWatchLastId++);
+    watchId = QString::asprintf("w%d", m_varWatchLastId++);
     VarWatch *w = new VarWatch(watchId,varName);
     rc = priv_gdbVarWatchCreate(varName, watchId, w);
     if(rc)
@@ -2069,8 +2098,5 @@ bool Core::isRunning()
 }
 
 
-bool Core::isDownload()
-{
-  return m_download;
-}
+
     

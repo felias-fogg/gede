@@ -1,6 +1,6 @@
 <RCC>
   <qresource prefix="/images">
-    <file>res/down.png</file>
+    <file>res/next.png</file>
     <file>res/stop.png</file>
     <file>res/quit.png</file>
     <file>res/restart.png</file>

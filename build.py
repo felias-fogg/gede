@@ -6,6 +6,7 @@ import sys
 import os
 import subprocess
 import shutil
+from sys import platform
 
 
 FORCE_QT4=1
@@ -21,7 +22,7 @@ g_exeName = "gede"
 g_qtVersionToUse = FORCE_QT5
 g_qmakeQt4 = ""
 g_qmakeQt5 = ""
-g_allSrcDirs = ["./src",
+g_otherSrcDirs = [
             "./tests/tagtest",
             "./tests/highlightertest",
             "./tests/ini"
@@ -67,6 +68,7 @@ def detectQmakeQtVer(qmakeExe):
         
 # Run the make command
 def run_make(a_list):
+    global g_verbose
     if g_verbose:
         errcode = subprocess.call(['make'] + a_list)
     else:
@@ -80,13 +82,16 @@ def run_make(a_list):
 # Remove a file
 def removeFile(filename):
     try:
+        global g_verbose
+        if g_verbose:
+            print("rm " + filename)
         os.remove(filename)
     except OSError:
         pass
 
 # Do a cleanup
 def doClean():
-    for p in g_allSrcDirs:
+    for p in g_otherSrcDirs + g_mainSrcDir:
         print("Cleaning up in %s" % (p))
         oldP = os.getcwd()
         os.chdir(p)
@@ -119,7 +124,11 @@ def dump_usage():
 
 
 def exeExist(name):
-    return shutil.which(name)
+    pathEnv = os.environ["PATH"]
+    for path in pathEnv.split(":"):
+        if os.path.isfile(path + "/" + name):
+            return path
+    return ""
 
 def printRed(textString):
     """ Print in red text """
@@ -248,7 +257,7 @@ if __name__ == "__main__":
             
             olddir = os.getcwd()
             if do_buildAll:
-                srcDirList = g_allSrcDirs
+                srcDirList = g_mainSrcDir + g_otherSrcDirs 
             else:
                 srcDirList = g_mainSrcDir
             for srcdir in srcDirList:
@@ -275,9 +284,9 @@ if __name__ == "__main__":
                 
         if do_install:
             os.chdir("src")
-            if sys.platform == 'darwin':
-                os.chdir("gede.app/Contents/MacOS")
             print("Installing to '%s'" % (g_dest_path) )
+
+            # Create destination path
             try:
                 os.makedirs(g_dest_path + "/bin")
             except:
@@ -285,9 +294,15 @@ if __name__ == "__main__":
             if not os.path.isdir(g_dest_path + "/bin"):
                 print("Failed to create dir")
                 exit(1)
+
+            # Copy to destination path
             try:
-                shutil.copyfile(g_exeName, g_dest_path + "/bin/" + g_exeName)
-                os.chmod(g_dest_path + "/bin/" + g_exeName, 0o775);
+                if platform == "darwin":
+                    shutil.copy("%s.app/Contents/MacOS/%s" % (g_exeName,g_exeName), g_dest_path + "/bin")
+                    shutil.copytree("%s.app" % (g_exeName), "/Applications/%s.app" % (g_exeName), dirs_exist_ok=True)
+                else:
+                    shutil.copyfile(g_exeName, g_dest_path + "/bin/" + g_exeName)
+                    os.chmod(g_dest_path + "/bin/" + g_exeName, 0o775);
             except:
                 print("Failed to install files to " + g_dest_path)
                 raise

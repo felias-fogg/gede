@@ -1,3 +1,4 @@
+//#define ENABLE_DEBUGMSG
 /*
  * Copyright (C) 2014-2021 Johan Henriksson.
  * All rights reserved.
@@ -251,9 +252,9 @@ void Settings::loadGlobalConfig()
     for(int clrIdx = 0;clrIdx < 8;clrIdx++)
     {
         QString fieldName;
-        fieldName.sprintf("ProgramConsole/ColorNorm%d", clrIdx);
+        fieldName = QString::asprintf("ProgramConsole/ColorNorm%d", clrIdx);
         m_progConColorNorm[clrIdx] = tmpIni.getColor(fieldName, m_progConColorNorm[clrIdx]);
-        fieldName.sprintf("ProgramConsole/ColorBright%d", clrIdx);
+        fieldName = QString::asprintf("ProgramConsole/ColorBright%d", clrIdx);
         m_progConColorBright[clrIdx] = tmpIni.getColor(fieldName, m_progConColorBright[clrIdx]);
     }
     m_progConBackspaceKey = tmpIni.getInt("ProgramConsole/BackspaceKey", m_progConBackspaceKey);
@@ -278,12 +279,16 @@ void Settings::loadProjectConfig(QString filepath)
     m_download = tmpIni.getBool("Download", true);
     switch(tmpIni.getInt("Mode", MODE_LOCAL))
     {
-        default:
+        default: assert(0);break;
         case MODE_LOCAL: m_connectionMode = MODE_LOCAL;break;
         case MODE_TCP: m_connectionMode = MODE_TCP;break;
+        case MODE_SERIAL: m_connectionMode = MODE_SERIAL;break;
         case MODE_COREDUMP: m_connectionMode = MODE_COREDUMP;break;
         case MODE_PID: m_connectionMode = MODE_PID;break;
     }
+
+    m_serialBaudRate = tmpIni.getInt("SerialBaudRate", 115200);
+    m_serialPort = tmpIni.getString("SerialPort", "");
     m_tcpPort = tmpIni.getInt("TcpPort", 2000);
     m_tcpHost = tmpIni.getString("TcpHost", "localhost");
     m_initCommands = tmpIni.getStringList("InitCommands", m_initCommands);
@@ -331,6 +336,7 @@ void Settings::save()
 
 void Settings::setProjectConfig(QString filename)
 {
+    debugMsg("%s(filename:%s)", __func__, qPrintable(filename));
     g_projConfigFilename = filename;
 }
 
@@ -350,6 +356,8 @@ void Settings::saveProjectConfig()
     tmpIni.setBool("Download", m_download);
     tmpIni.setInt("TcpPort", m_tcpPort);
     tmpIni.setString("TcpHost", m_tcpHost);
+    tmpIni.setInt("SerialBaudRate", m_serialBaudRate);
+    tmpIni.setString("SerialPort", m_serialPort);
     tmpIni.setInt("Mode", (int)m_connectionMode);
     tmpIni.setString("LastProgram", m_lastProgram);
     tmpIni.setStringList("InitCommands", m_initCommands);
@@ -378,7 +386,7 @@ void Settings::saveProjectConfig()
         field = bkptCfg.m_filename;
         field += ":";
         QString lineNoStr;
-        lineNoStr.sprintf("%d", bkptCfg.m_lineNo);
+        lineNoStr = QString::asprintf("%d", bkptCfg.m_lineNo);
         field += lineNoStr;
         breakpointStringList.push_back(field);
     }
@@ -473,9 +481,9 @@ void Settings::saveGlobalConfig()
     for(int clrIdx = 0;clrIdx < 8;clrIdx++)
     {
         QString fieldName;
-        fieldName.sprintf("ProgramConsole/ColorNorm%d", clrIdx);
+        fieldName = QString::asprintf("ProgramConsole/ColorNorm%d", clrIdx);
         tmpIni.setColor(fieldName, m_progConColorNorm[clrIdx]);
-        fieldName.sprintf("ProgramConsole/ColorBright%d", clrIdx);
+        fieldName = QString::asprintf("ProgramConsole/ColorBright%d", clrIdx);
         tmpIni.setColor(fieldName, m_progConColorBright[clrIdx]);
     }
     tmpIni.setInt("ProgramConsole/BackspaceKey", m_progConBackspaceKey);
