@@ -1,5 +1,214 @@
 # CHANGELOG
 
+V2.20.0 (29-Sep-2023)
+
+1. Added a "reload" operation. Interestingly, it leads sometimes to a GDB error. This seems to happen when the changes are too big. No idea why. I have not seen it when I used avr-gdb directly.
+
+   In addition to the changes below, you need to add the icon down.png (which is the next icon turned by 90 degrees).
+
+   ```diff
+   diff --git a/src/core.cpp b/src/core.cpp
+   index 555e13d..b222261 100644
+   --- a/src/core.cpp
+   +++ b/src/core.cpp
+   @@ -847,6 +847,67 @@ void Core::gdbRun()
+        }
+    }
+    
+   +/**
+   + * @brief Asks gdb to reload (a probably modified binary) and run it.
+   + * This command is only active when we are in remote mode, download has been activated and an
+   + * executable has been specified.
+   + */
+   +void Core::gdbReload(QString progpath)
+   +{
+   +    GdbCom& com = GdbCom::getInstance();
+   +    Tree resultData;
+   +    ICore::TargetState oldState;
+   +    GdbResult rc;
+   +
+   +    if(m_targetState == ICore::TARGET_STARTING || m_targetState == ICore::TARGET_RUNNING)
+   +    {
+   +        if(m_inf)
+   +            m_inf->ICore_onMessage("Program is currently running");
+   +        return;
+   +    }
+   +
+   +    //
+   +
+   +    rc = com.commandF(&resultData, "-file-symbol-file %s", stringToCStr(progpath));
+   +    if (rc != GDB_ERROR)
+   +      rc = com.commandF(&resultData, "-file-exec-file %s", stringToCStr(progpath));
+   +    if (rc != GDB_ERROR)
+   +      rc = com.command(&resultData, "-environment-directory -r");
+   +    if (rc != GDB_ERROR)
+   +      rc = com.command(&resultData, "-target-download");
+   +    if (rc == GDB_ERROR) return;
+   +
+   +    if(m_ptsListener)
+   +        delete m_ptsListener;
+   +    m_ptsListener = new QSocketNotifier(m_ptsFd, QSocketNotifier::Read);
+   +    connect(m_ptsListener, SIGNAL(activated(int)), this, SLOT(onGdbOutput(int)));
+   +
+   +    m_pid = 0;
+   +    oldState = m_targetState;
+   +    m_targetState = ICore::TARGET_STARTING;
+   +    rc = com.commandF(&resultData, "-exec-run");
+   +    if(rc == GDB_ERROR)
+   +        m_targetState = oldState;
+   +
+   +    // Loop through all source files
+   +    for(int i = 0;i < m_sourceFiles.size();i++)
+   +      {
+   +	SourceFile *sourceFile = m_sourceFiles[i];
+   +	
+   +	if(QFileInfo(sourceFile->m_fullName).exists())
+   +	  {
+   +	    // Has the file being modified?
+   +	    QDateTime modTime = QFileInfo(sourceFile->m_fullName).lastModified();
+   +	    if(sourceFile->m_modTime <  modTime)
+   +	      {
+   +		m_inf->ICore_onSourceFileChanged(sourceFile->m_fullName);
+   +	      }
+   +	  }
+   +      }
+   +
+   +    // Get all source files
+   +    gdbGetFiles();
+   +}
+    
+    /**
+     * @brief  Resumes the execution until a breakpoint is encountered, or until the program exits.
+   diff --git a/src/core.h b/src/core.h
+   index f8d13f7..f8a1543 100644
+   --- a/src/core.h
+   +++ b/src/core.h
+   @@ -254,6 +254,7 @@ public:
+        void gdbStepOut();
+        void gdbContinue();
+        void gdbRun();
+   +    void gdbReload(QString progpath);
+        bool gdbGetFiles();
+    
+        int getMemoryDepth();
+   diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+   index 0ca64c8..fbbf836 100644
+   --- a/src/mainwindow.cpp
+   +++ b/src/mainwindow.cpp
+   @@ -142,6 +142,7 @@ MainWindow::MainWindow(QWidget *parent)
+        connect(m_ui.actionStep_In, SIGNAL(triggered()), SLOT(onStepIn()));
+        connect(m_ui.actionStep_Out, SIGNAL(triggered()), SLOT(onStepOut()));
+        connect(m_ui.actionRestart, SIGNAL(triggered()), SLOT(onRestart()));
+   +    connect(m_ui.actionReload, SIGNAL(triggered()), SLOT(onReload()));
+        connect(m_ui.actionContinue, SIGNAL(triggered()), SLOT(onContinue()));
+    
+        connect(m_ui.actionViewStack, SIGNAL(triggered()), SLOT(onViewStack()));
+   @@ -1376,6 +1377,15 @@ void MainWindow::onRestart()
+        core.gdbRun();
+    }
+    
+   +void MainWindow::onReload()
+   +{
+   +    Core &core = Core::getInstance();
+   +
+   +    m_ui.targetOutputView->clearAll();
+   +
+   +    core.gdbReload(m_cfg.getProgramPath());
+   +}
+   +
+    
+    void MainWindow::onContinue()
+    {
+   @@ -2013,6 +2023,7 @@ void MainWindow::ICore_onStateChanged(TargetState state)
+        m_ui.actionStop->setEnabled(isRunning);
+        m_ui.actionContinue->setEnabled(isStopped);
+        m_ui.actionRestart->setEnabled(!isRunning);
+   +    m_ui.actionReload->setEnabled(!isRunning && m_cfg.m_download && !(m_cfg.getProgramPath().isEmpty()));
+    
+        m_ui.varWidget->setEnabled(isStopped);
+    
+   diff --git a/src/mainwindow.h b/src/mainwindow.h
+   index 1456469..f2d9d4f 100644
+   --- a/src/mainwindow.h
+   +++ b/src/mainwindow.h
+   @@ -152,6 +152,7 @@ public slots:
+        void onStop();
+        void onBreakpointsWidgetItemDoubleClicked(QTreeWidgetItem * item,int column);
+        void onRestart();
+   +    void onReload();
+        void onContinue();
+        void onCodeViewContextMenuAddWatch();
+        void onCodeViewContextMenuOpenFile();
+   diff --git a/src/mainwindow.ui b/src/mainwindow.ui
+   index 92e04d5..3f24122 100644
+   --- a/src/mainwindow.ui
+   +++ b/src/mainwindow.ui
+   @@ -589,6 +589,7 @@
+        <property name="title">
+         <string>Execution</string>
+        </property>
+   +    <addaction name="actionReload"/>
+        <addaction name="actionRestart"/>
+        <addaction name="actionStop"/>
+        <addaction name="separator"/>
+   @@ -651,6 +652,7 @@
+       </attribute>
+       <addaction name="actionQuit"/>
+       <addaction name="separator"/>
+   +   <addaction name="actionReload"/>
+       <addaction name="actionRestart"/>
+       <addaction name="actionStop"/>
+       <addaction name="separator"/>
+   @@ -735,6 +737,18 @@
+       <property name="shortcut">
+        <string>F11</string>
+       </property>
+   +  </action>
+   +    <action name="actionReload">
+   +   <property name="icon">
+   +    <iconset resource="resource.qrc">
+   +     <normaloff>:/images/res/down.png</normaloff>:/images/res/down.png</iconset>
+   +   </property>
+   +   <property name="text">
+   +    <string>Reload</string>
+   +   </property>
+   +   <property name="shortcut">
+   +    <string>F12</string>
+   +   </property>
+      </action>
+      <action name="actionSettings">
+       <property name="text">
+   diff --git a/src/resource.qrc b/src/resource.qrc
+   index 078058d..adbf418 100644
+   --- a/src/resource.qrc
+   +++ b/src/resource.qrc
+   @@ -10,5 +10,6 @@
+        <file>res/file.png</file>
+        <file>res/folder.png</file>
+        <file>res/step_out.png</file>
+   +    <file>res/down.png</file>
+     </qresource>
+    </RCC>
+   diff --git a/src/version.h b/src/version.h
+   index 05ccae6..0eb637e 100644
+   --- a/src/version.h
+   +++ b/src/version.h
+   @@ -10,8 +10,8 @@
+    #define FILE__VERSION_H
+    
+    #define GD_MAJOR 2
+   -#define GD_MINOR 19
+   -#define GD_PATCH 5
+   +#define GD_MINOR 20
+   +#define GD_PATCH 0
+    
+    
+    #endif // FILE__VERSION_H
+   
+   ```
+
+   
+
 ## V2.19.5 (29-Sep-2023)
 
 1. Added "/private" to the list of excluded directories since this sometimes pops up on my Mac.
