@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## V2.19.5 (29-Sep-2023)
+
+1. Added "/private" to the list of excluded directories since this sometimes pops up on my Mac.
+
+   ```diff
+   diff --git a/src/settings.cpp b/src/settings.cpp
+   index db73441..ca36914 100644
+   --- a/src/settings.cpp
+   +++ b/src/settings.cpp
+   @@ -129,7 +129,7 @@ void Settings::loadDefaultsAdvanced()
+        m_sourceIgnoreDirs.clear();
+        m_sourceIgnoreDirs.append("/build");
+        m_sourceIgnoreDirs.append("/usr");
+   -    
+   +    m_sourceIgnoreDirs.append("/private");
+    }
+    
+   ```
+
 ## V2.19.4 (27-Sep-2023)
 
 1. The Arduino INO files were not included in ctag scanning so that the functions did not show up in the functions window. The .ino file extension has been added:
