@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## V2.20.1 (27-Mar-2024)
+
+1. Added `down.png` to `src/res` (where it already should have been)
+
+   
+
 ## V2.20.0 (29-Sep-2023)
 
 1. Added a "reload" operation. Interestingly, it leads sometimes to a GDB error. This seems to happen when the changes are too big. No idea why. I have not seen it when I used avr-gdb directly.
